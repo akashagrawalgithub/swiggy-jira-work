@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Board</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #F4F5F7;
+      --surface:     #FFFFFF;
+      --surface2:    #F4F5F7;
+      --border:      #DFE1E6;
+      --border-dark: #C1C7D0;
+      --text:        #172B4D;
+      --text-muted:  #6B778C;
+      --text-light:  #97A0AF;
+      --accent:      #0052CC;
+      --accent-bg:   #DEEBFF;
+      --accent-hover:#0065FF;
+      --red:         #DE350B;
+      --red-bg:      #FFEBE6;
+      --green:       #006644;
+      --green-bg:    #E3FCEF;
+      --yellow:      #FF8B00;
+      --yellow-bg:   #FFFAE6;
+      --purple:      #403294;
+      --purple-bg:   #EAE6FF;
+      --radius:      4px;
+      --radius-lg:   8px;
+      --shadow:      0 1px 3px rgba(9,30,66,.13), 0 0 0 1px rgba(9,30,66,.08);
+      --shadow-lg:   0 8px 24px rgba(9,30,66,.15);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Auth ────────────────────────────────────────────────────────────── */
+    #auth-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: var(--bg);
+    }
+    .auth-card {
+      background: var(--surface); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg); padding: 48px 40px; width: 400px;
+    }
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+    }
+    .auth-logo-icon {
+      width: 36px; height: 36px; background: var(--accent);
+      border-radius: var(--radius); display: flex; align-items: center;
+      justify-content: center; color: #fff; font-weight: 800; font-size: 16px;
+    }
+    .auth-logo span { font-size: 20px; font-weight: 700; color: var(--text); }
+    .auth-card h2 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+    .auth-card p  { color: var(--text-muted); margin-bottom: 28px; font-size: 14px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 9px 12px; border-radius: var(--radius);
+      border: 2px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: 14px; outline: none;
+      transition: border-color .15s; resize: vertical;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius); border: none;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s, box-shadow .15s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost {
+      background: var(--surface); color: var(--text);
+      border: 2px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface2); border-color: var(--border-dark); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { background: #bf2600; }
+    .btn-subtle { background: transparent; color: var(--text-muted); border: none; }
+    .btn-subtle:hover { background: var(--surface2); color: var(--text); }
+    .btn-full { width: 100%; justify-content: center; }
+    .error-msg {
+      color: var(--red); font-size: 13px; margin-top: 8px;
+      background: var(--red-bg); padding: 8px 12px; border-radius: var(--radius);
+      display: none;
+    }
+    .error-msg.show { display: block; }
+    .auth-hint {
+      margin-top: 20px; padding: 12px; background: var(--accent-bg);
+      border-radius: var(--radius); font-size: 12px; color: var(--accent);
+    }
+
+    /* ── App shell ───────────────────────────────────────────────────────── */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* ── Navbar ──────────────────────────────────────────────────────────── */
+    .navbar {
+      height: 56px; background: var(--accent); display: flex;
+      align-items: center; padding: 0 20px; gap: 8px;
+      position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 8px; margin-right: 8px; color: #fff;
+      font-weight: 700; font-size: 16px; text-decoration: none;
+    }
+    .navbar-brand-icon {
+      width: 28px; height: 28px; background: rgba(255,255,255,.25);
+      border-radius: var(--radius); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 13px;
+    }
+    .nav-btn {
+      padding: 6px 12px; border-radius: var(--radius); border: none;
+      background: transparent; color: rgba(255,255,255,.8); font-size: 14px;
+      cursor: pointer; transition: background .15s; white-space: nowrap;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+    .nav-btn.active { background: rgba(255,255,255,.2); color: #fff; font-weight: 500; }
+    .navbar-space { flex: 1; }
+    .navbar-right { display: flex; align-items: center; gap: 6px; }
+    .notif-wrap { position: relative; }
+    .notif-badge {
+      position: absolute; top: -3px; right: -3px; background: var(--red);
+      border: 2px solid var(--accent); border-radius: 50%;
+      width: 16px; height: 16px; font-size: 9px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.25);
+      border: 2px solid rgba(255,255,255,.5); display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 700;
+      color: #fff; text-transform: uppercase; cursor: default;
+    }
+
+    /* ── Sidebar + Content layout ────────────────────────────────────────── */
+    .app-body { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 240px; background: var(--surface); border-right: 1px solid var(--border);
+      flex-shrink: 0; padding: 16px 0; display: none; flex-direction: column;
+    }
+    .sidebar.visible { display: flex; }
+    .sidebar-section { padding: 0 8px; margin-bottom: 8px; }
+    .sidebar-label {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .6px; padding: 8px 8px 4px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: var(--radius); color: var(--text-muted); cursor: pointer;
+      font-size: 14px; transition: background .12s; border: none; background: none;
+      width: 100%; text-align: left;
+    }
+    .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+    .sidebar-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+    .sidebar-item .icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 16px; }
+
+    /* ── Main content ────────────────────────────────────────────────────── */
+    .main { flex: 1; overflow: auto; }
+    .page { display: none; padding: 24px; }
+    .page.active { display: block; }
+
+    /* ── Page header ─────────────────────────────────────────────────────── */
+    .page-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+      padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .page-title { font-size: 20px; font-weight: 600; flex: 1; }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px; font-size: 13px;
+      color: var(--text-muted); margin-bottom: 4px;
+    }
+    .breadcrumb span { cursor: pointer; }
+    .breadcrumb span:hover { color: var(--accent); text-decoration: underline; }
+
+    /* ── Projects grid ───────────────────────────────────────────────────── */
+    .projects-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;
+    }
+    .project-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px;
+      cursor: pointer; transition: box-shadow .15s, border-color .15s;
+    }
+    .project-card:hover { box-shadow: var(--shadow); border-color: var(--accent); }
+    .project-card-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+    .project-icon {
+      width: 42px; height: 42px; border-radius: var(--radius); background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 16px; flex-shrink: 0;
+    }
+    .project-key-badge {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      background: var(--accent-bg); color: var(--accent);
+      border-radius: 3px; font-size: 11px; font-weight: 700; margin-bottom: 4px;
+    }
+    .project-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .project-card p  { font-size: 13px; color: var(--text-muted); }
+    .project-stats {
+      display: flex; gap: 16px; padding-top: 14px;
+      border-top: 1px solid var(--border); margin-top: 14px;
+    }
+    .stat { font-size: 12px; color: var(--text-muted); }
+    .stat strong { color: var(--text); font-size: 15px; display: block; }
+
+    /* ── Board ───────────────────────────────────────────────────────────── */
+    .board-toolbar {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .board-title { font-size: 18px; font-weight: 600; }
+    .sprint-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--green-bg); color: var(--green);
+    }
+    .sprint-pill::before { content: '▶'; font-size: 9px; }
+    .no-sprint-pill {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px;
+      background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border);
+    }
+    .board-columns {
+      display: flex; gap: 12px; overflow-x: auto;
+      padding-bottom: 12px; align-items: flex-start;
+      min-height: calc(100vh - 220px);
+    }
+    .board-column {
+      flex-shrink: 0; width: 272px;
+      background: var(--surface2); border-radius: var(--radius-lg);
+      display: flex; flex-direction: column; max-height: calc(100vh - 220px);
+    }
+    .column-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px 10px;
+    }
+    .column-title-row { display: flex; align-items: center; gap: 8px; }
+    .column-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .column-name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+    .column-count {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: var(--border); border-radius: 10px; padding: 1px 7px;
+    }
+    .column-issues { flex: 1; padding: 4px 8px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+    .issue-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 12px; cursor: pointer;
+      transition: box-shadow .12s, transform .1s; border: 1px solid transparent;
+    }
+    .issue-card:hover { box-shadow: 0 4px 12px rgba(9,30,66,.15); transform: translateY(-1px); border-color: var(--accent); }
+    .issue-card-key  { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+    .issue-card-title { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.45; margin-bottom: 10px; }
+    .issue-card-footer { display: flex; align-items: center; justify-content: space-between; }
+    .issue-card-left  { display: flex; align-items: center; gap: 6px; }
+    .issue-card-right { display: flex; align-items: center; gap: 6px; }
+
+    /* ── Badges ──────────────────────────────────────────────────────────── */
+    .type-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 3px;
+      font-size: 9px; font-weight: 800; text-transform: uppercase;
+    }
+    .type-epic    { background: #6554C0; color: #fff; }
+    .type-story   { background: #36B37E; color: #fff; }
+    .type-task    { background: #2684FF; color: #fff; }
+    .type-bug     { background: #FF5630; color: #fff; }
+    .type-subtask { background: #97A0AF; color: #fff; }
+
+    .priority-icon { font-size: 13px; }
+    .p-highest { color: #DE350B; }
+    .p-high    { color: #FF5630; }
+    .p-medium  { color: #FF8B00; }
+    .p-low     { color: #97A0AF; }
+    .p-lowest  { color: #C1C7D0; }
+
+    .points-badge {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1px 7px;
+    }
+    .assignee-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: #fff;
+      text-transform: uppercase; flex-shrink: 0;
+    }
+
+    /* ── Issue Detail Modal ──────────────────────────────────────────────── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(9,30,66,.54); z-index: 200;
+      align-items: flex-start; justify-content: center;
+      padding: 40px 16px; overflow-y: auto;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius-lg);
+      width: 100%; max-width: 760px; box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 24px 28px 0;
+    }
+    .modal-header-left { flex: 1; min-width: 0; }
+    .modal-key-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .modal-title { font-size: 20px; font-weight: 600; line-height: 1.4; }
+    .modal-close {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: var(--text-muted); font-size: 20px; margin-left: 12px;
+      border-radius: var(--radius); flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--surface2); color: var(--text); }
+    .modal-body { display: flex; gap: 0; }
+    .modal-main { flex: 1; padding: 20px 28px 28px; min-width: 0; }
+    .modal-aside {
+      width: 220px; flex-shrink: 0; background: var(--surface2);
+      border-left: 1px solid var(--border); padding: 20px 16px;
+    }
+    .modal-section { margin-bottom: 24px; }
+    .modal-section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text-muted); margin-bottom: 10px;
+    }
+    .modal-desc { font-size: 14px; color: var(--text); line-height: 1.6; }
+    .aside-field { margin-bottom: 14px; }
+    .aside-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+    .aside-value { font-size: 13px; color: var(--text); font-weight: 500; }
+    .transition-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .trans-btn {
+      padding: 5px 12px; border-radius: 20px; border: 2px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all .12s;
+    }
+    .trans-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+    /* Comments */
+    .comment-item {
+      display: flex; gap: 10px; margin-bottom: 16px;
+    }
+    .comment-body { flex: 1; }
+    .comment-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .comment-meta strong { color: var(--text); }
+    .comment-content {
+      font-size: 13px; color: var(--text); line-height: 1.5;
+      background: var(--surface2); border-radius: var(--radius); padding: 8px 12px;
+    }
+    .comment-input-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
+    .comment-input-row textarea {
+      flex: 1; padding: 8px 12px; border-radius: var(--radius);
+      border: 2px solid var(--border); font-size: 13px;
+      font-family: inherit; resize: none; outline: none; color: var(--text);
+    }
+    .comment-input-row textarea:focus { border-color: var(--accent); }
+
+    /* ── Create modal ────────────────────────────────────────────────────── */
+    .create-modal { max-width: 560px; }
+    .modal-footer {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding: 16px 28px; border-top: 1px solid var(--border);
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Backlog ─────────────────────────────────────────────────────────── */
+    .backlog-group { margin-bottom: 28px; }
+    .backlog-group-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+      padding: 8px 12px; background: var(--surface2); border-radius: var(--radius);
+      cursor: pointer; user-select: none;
+    }
+    .backlog-group-title { font-size: 13px; font-weight: 600; flex: 1; }
+    .backlog-group-count { font-size: 12px; color: var(--text-muted); }
+    .backlog-issue {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 4px; cursor: pointer;
+      transition: border-color .12s;
+    }
+    .backlog-issue:hover { border-color: var(--accent); }
+    .backlog-key   { font-size: 12px; color: var(--text-muted); width: 76px; flex-shrink: 0; font-weight: 500; }
+    .backlog-title { flex: 1; font-size: 13px; font-weight: 500; }
+    .status-lozenge {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      border-radius: 3px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .sl-todo     { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+    .sl-progress { background: var(--accent-bg); color: var(--accent); }
+    .sl-review   { background: var(--yellow-bg); color: var(--yellow); }
+    .sl-done     { background: var(--green-bg); color: var(--green); }
+
+    /* ── Sprints ─────────────────────────────────────────────────────────── */
+    .sprint-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden;
+    }
+    .sprint-card-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .sprint-card h3 { font-size: 15px; font-weight: 600; flex: 1; }
+    .sprint-status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .ss-planned   { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+    .ss-active    { background: var(--green-bg); color: var(--green); }
+    .ss-completed { background: var(--border); color: var(--text-muted); }
+    .sprint-card-body { padding: 16px 20px; }
+    .sprint-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
+    .sprint-meta-item { font-size: 13px; color: var(--text-muted); }
+    .sprint-meta-item strong { color: var(--text); }
+    .sprint-actions { display: flex; gap: 8px; }
+
+    /* ── Notifications ───────────────────────────────────────────────────── */
+    .notif-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      background: var(--surface); transition: background .12s;
+    }
+    .notif-item:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+    .notif-item:last-child  { border-radius: 0 0 var(--radius-lg) var(--radius-lg); border-bottom: none; }
+    .notif-item.unread { background: var(--accent-bg); }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+    .notif-dot.read { background: transparent; }
+    .notif-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .notif-body  { font-size: 13px; color: var(--text-muted); }
+    .notif-time  { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+
+    /* ── Misc ────────────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty-state p  { font-size: 14px; }
+    .loading-state  { text-align: center; padding: 60px; color: var(--text-muted); }
+    .loading-state::after { content: ''; display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin-left: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tag {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+      background: var(--surface2); color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ Auth ════════════════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">J</div>
+      <span>Jira Board</span>
+    </div>
+    <h2>Sign in to continue</h2>
+    <p>Enter your credentials to access your workspace</p>
+    <div class="form-group">
+      <label>Email address</label>
+      <input id="login-email" type="email"  placeholder="you@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="login-password" type="password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary btn-full" onclick="login()" style="margin-top:4px">Sign In</button>
+    <div id="login-error" class="error-msg"></div>
+    
+  </div>
+</div>
+
+<!-- ══ App ═════════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="navbar-brand-icon">J</div>
+      Jira
+    </div>
+    <button class="nav-btn" onclick="showPage('projects')">Projects</button>
+    <button class="nav-btn" id="nav-board"   onclick="showPage('board')"   style="display:none">Board</button>
+    <button class="nav-btn" id="nav-backlog" onclick="showPage('backlog')" style="display:none">Backlog</button>
+    <button class="nav-btn" id="nav-sprints" onclick="showPage('sprints')" style="display:none">Sprints</button>
+    <div class="navbar-space"></div>
+    <div class="navbar-right">
+      <div class="notif-wrap">
+        <button class="btn-subtle btn" onclick="showPage('notifications')" style="color:rgba(255,255,255,.8);padding:6px 10px">
+          🔔
+        </button>
+        <div id="notif-badge" class="notif-badge" style="display:none">0</div>
+      </div>
+      <div class="avatar" id="user-avatar">?</div>
+      <button class="nav-btn" onclick="logout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="app-body">
+    <!-- Sidebar (shown when project selected) -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label" id="sidebar-project-name">Project</div>
+        <button class="sidebar-item active" id="sb-board"   onclick="showPage('board')">
+          <span class="icon">⬛</span> Board
+        </button>
+        <button class="sidebar-item" id="sb-backlog"  onclick="showPage('backlog')">
+          <span class="icon">📋</span> Backlog
+        </button>
+        <button class="sidebar-item" id="sb-sprints"  onclick="showPage('sprints')">
+          <span class="icon">🏃</span> Sprints
+        </button>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <button class="sidebar-item" onclick="showPage('projects')">
+          <span class="icon">🏠</span> All Projects
+        </button>
+        <button class="sidebar-item" onclick="showPage('notifications')">
+          <span class="icon">🔔</span> Notifications
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Projects -->
+      <div id="page-projects" class="page active">
+        <div class="page-header">
+          <div class="page-title">Your Projects</div>
+          <button class="btn btn-primary" onclick="openModal('create-project-modal')">+ New Project</button>
+        </div>
+        <div id="projects-grid" class="projects-grid">
+          <div class="loading-state">Loading projects</div>
+        </div>
+      </div>
+
+      <!-- Board -->
+      <div id="page-board" class="page">
+        <div class="board-toolbar">
+          <div>
+            <div class="breadcrumb">
+              <span onclick="showPage('projects')">Projects</span>
+              <span style="color:var(--text-light)">&nbsp;/&nbsp;</span>
+              <span id="board-project-name-bc" style="cursor:default;color:var(--text-muted)"></span>
+            </div>
+            <div class="board-title" id="board-title">Board</div>
+          </div>
+          <div id="board-sprint-label"></div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" onclick="openModal('create-issue-modal')">+ Create Issue</button>
+        </div>
+        <div id="board-columns" class="board-columns">
+          <div class="loading-state">Loading board</div>
+        </div>
+      </div>
+
+      <!-- Backlog -->
+      <div id="page-backlog" class="page">
+        <div class="page-header">
+          <div>
+            <div class="breadcrumb">
+              <span onclick="showPage('projects')">Projects</span>
+              <span style="color:var(--text-light)">&nbsp;/&nbsp;</span>
+              <span id="backlog-project-name" style="cursor:default;color:var(--text-muted)"></span>
+            </div>
+            <div class="page-title">Backlog</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('create-issue-modal')">+ Create Issue</button>
+        </div>
+        <div id="backlog-content"><div class="loading-state">Loading</div></div>
+      </div>
+
+      <!-- Sprints -->
+      <div id="page-sprints" class="page">
+        <div class="page-header">
+          <div>
+            <div class="breadcrumb">
+              <span onclick="showPage('projects')">Projects</span>
+              <span style="color:var(--text-light)">&nbsp;/&nbsp;</span>
+              <span id="sprints-project-name" style="cursor:default;color:var(--text-muted)"></span>
+            </div>
+            <div class="page-title">Sprints</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('create-sprint-modal')">+ New Sprint</button>
+        </div>
+        <div id="sprints-content"><div class="loading-state">Loading</div></div>
+      </div>
+
+      <!-- Notifications -->
+      <div id="page-notifications" class="page">
+        <div class="page-header">
+          <div class="page-title">Notifications</div>
+          <button class="btn btn-ghost" onclick="markAllRead()">Mark all as read</button>
+        </div>
+        <div id="notif-content"><div class="loading-state">Loading</div></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══ Issue Detail ════════════════════════════════════════════════════════ -->
+<div id="issue-modal" class="overlay" onclick="overlayClose(event,'issue-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-key-row">
+          <span id="modal-type-badge"></span>
+          <span id="modal-issue-key" style="font-size:13px;color:var(--text-muted);font-weight:600"></span>
+        </div>
+        <div class="modal-title" id="modal-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('issue-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-main">
+        <div class="modal-section" id="modal-trans-section">
+          <div class="modal-section-title">Transition</div>
+          <div class="transition-btns" id="modal-transitions"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Description</div>
+          <div class="modal-desc" id="modal-desc"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Comments</div>
+          <div id="modal-comments"></div>
+          <div class="comment-input-row">
+            <textarea id="comment-input" rows="2" placeholder="Add a comment… Use @name to mention someone"></textarea>
+            <button class="btn btn-primary" onclick="postComment()">Save</button>
+          </div>
+        </div>
+      </div>
+      <aside class="modal-aside">
+        <div class="aside-field">
+          <div class="aside-label">Status</div>
+          <div class="aside-value" id="aside-status"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Priority</div>
+          <div class="aside-value" id="aside-priority"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Assignee</div>
+          <div class="aside-value" id="aside-assignee"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Reporter</div>
+          <div class="aside-value" id="aside-reporter"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Story Points</div>
+          <div class="aside-value" id="aside-points"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Sprint</div>
+          <div class="aside-value" id="aside-sprint"></div>
+        </div>
+        <div class="aside-field">
+          <div class="aside-label">Created</div>
+          <div class="aside-value" id="aside-created"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Create Issue ════════════════════════════════════════════════════════ -->
+<div id="create-issue-modal" class="overlay" onclick="overlayClose(event,'create-issue-modal')">
+  <div class="modal create-modal">
+    <div class="modal-header" style="padding-bottom:20px">
+      <div class="modal-header-left"><div class="modal-title">Create Issue</div></div>
+      <button class="modal-close" onclick="closeModal('create-issue-modal')">✕</button>
+    </div>
+    <div style="padding:0 28px">
+      <div class="form-group">
+        <label>Title <span style="color:var(--red)">*</span></label>
+        <input id="ci-title" placeholder="Short, descriptive summary" />
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Issue Type</label>
+          <select id="ci-type">
+            <option value="STORY">Story</option>
+            <option value="TASK">Task</option>
+            <option value="BUG">Bug</option>
+            <option value="EPIC">Epic</option>
+            <option value="SUBTASK">Subtask</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="ci-priority">
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="HIGHEST">Highest</option>
+            <option value="LOW">Low</option>
+            <option value="LOWEST">Lowest</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="ci-desc" rows="3" placeholder="What needs to be done?"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Story Points</label>
+          <input id="ci-points" type="number" min="0" max="100" placeholder="e.g. 3" />
+        </div>
+        <div class="form-group">
+          <label>Sprint</label>
+          <select id="ci-sprint"><option value="">Backlog</option></select>
+        </div>
+      </div>
+      <div id="ci-error" class="error-msg"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-issue-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createIssue()">Create Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Create Project ══════════════════════════════════════════════════════ -->
+<div id="create-project-modal" class="overlay" onclick="overlayClose(event,'create-project-modal')">
+  <div class="modal create-modal">
+    <div class="modal-header" style="padding-bottom:20px">
+      <div class="modal-header-left"><div class="modal-title">Create Project</div></div>
+      <button class="modal-close" onclick="closeModal('create-project-modal')">✕</button>
+    </div>
+    <div style="padding:0 28px">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Project Key <span style="color:var(--red)">*</span></label>
+          <input id="cp-key" placeholder="e.g. MYAPP" style="text-transform:uppercase" maxlength="10" />
+        </div>
+        <div class="form-group">
+          <label>Name <span style="color:var(--red)">*</span></label>
+          <input id="cp-name" placeholder="My Project" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="cp-desc" rows="2" placeholder="What is this project about?"></textarea>
+      </div>
+      <div id="cp-error" class="error-msg"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-project-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createProject()">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Create Sprint ═══════════════════════════════════════════════════════ -->
+<div id="create-sprint-modal" class="overlay" onclick="overlayClose(event,'create-sprint-modal')">
+  <div class="modal create-modal">
+    <div class="modal-header" style="padding-bottom:20px">
+      <div class="modal-header-left"><div class="modal-title">Create Sprint</div></div>
+      <button class="modal-close" onclick="closeModal('create-sprint-modal')">✕</button>
+    </div>
+    <div style="padding:0 28px">
+      <div class="form-group">
+        <label>Sprint Name <span style="color:var(--red)">*</span></label>
+        <input id="cs-name" placeholder="Sprint 2" />
+      </div>
+      <div class="form-group">
+        <label>Sprint Goal</label>
+        <input id="cs-goal" placeholder="What should the team achieve?" />
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>Start Date</label><input id="cs-start" type="date" /></div>
+        <div class="form-group"><label>End Date</label><input id="cs-end" type="date" /></div>
+      </div>
+      <div id="cs-error" class="error-msg"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-sprint-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createSprint()">Create Sprint</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+var token = localStorage.getItem('token') || '';
+var currentUser = null;
+var currentProject = null;
+var currentSprints = [];
+var currentIssue = null;
+var activePage = 'projects';
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const r = await fetch(API + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+    body: body != null ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.message || data.error || 'Request failed');
+  return data;
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function overlayClose(e, id) { if (e.target.id === id) closeModal(id); }
+function showError(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError(id) { document.getElementById(id).classList.remove('show'); }
+
+var AVATAR_COLORS = ['#0052CC','#36B37E','#FF5630','#6554C0','#FF8B00','#00B8D9'];
+function avatarColor(name) {
+  var idx = (name || '').charCodeAt(0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+}
+
+function typeBadge(type) {
+  var icons = { EPIC:'E', STORY:'S', TASK:'T', BUG:'B', SUBTASK:'ST' };
+  return `<span class="type-badge type-${type.toLowerCase()}">${icons[type]||'?'}</span>`;
+}
+
+function priorityIcon(p) {
+  var icons = { HIGHEST:'⬆⬆', HIGH:'⬆', MEDIUM:'➡', LOW:'⬇', LOWEST:'⬇⬇' };
+  return `<span class="priority-icon p-${p.toLowerCase()}" title="${p}">${icons[p]||'—'}</span>`;
+}
+
+function statusLozenge(status) {
+  var s = (status || '').toLowerCase();
+  var cls = s.includes('progress') ? 'sl-progress' : s.includes('review') ? 'sl-review' : s === 'done' ? 'sl-done' : 'sl-todo';
+  return `<span class="status-lozenge ${cls}">${esc(status)}</span>`;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+async function login() {
+  hideError('login-error');
+  try {
+    var data = await api('POST', '/api/auth/login', {
+      email: document.getElementById('login-email').value,
+      password: document.getElementById('login-password').value,
+    });
+    token = data.token;
+    localStorage.setItem('token', token);
+    currentUser = data.user;
+    bootApp();
+  } catch(e) {
+    showError('login-error', e.message);
+  }
+}
+
+function logout() {
+  token = ''; localStorage.removeItem('token'); location.reload();
+}
+
+function bootApp() {
+  document.getElementById('user-avatar').textContent = (currentUser.displayName || '?')[0].toUpperCase();
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadProjects();
+  pollNotifications();
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  // navbar highlight
+  document.querySelectorAll('.navbar .nav-btn').forEach(b => b.classList.remove('active'));
+  var nb = document.querySelector(`.navbar .nav-btn[onclick*="'${name}'"]`);
+  if (nb) nb.classList.add('active');
+  // sidebar highlight
+  ['board','backlog','sprints'].forEach(n => {
+    var el = document.getElementById('sb-'+n);
+    if (el) el.classList.toggle('active', n === name);
+  });
+  activePage = name;
+  if (name === 'board')         loadBoard();
+  if (name === 'backlog')       loadBacklog();
+  if (name === 'sprints')       loadSprints();
+  if (name === 'notifications') loadNotifications();
+}
+
+function setProjectContext(id, name, key) {
+  currentProject = { id, name, key };
+  ['board','backlog','sprints'].forEach(n => {
+    document.getElementById('nav-'+n).style.display = 'inline-flex';
+  });
+  document.getElementById('sidebar').classList.add('visible');
+  document.getElementById('sidebar-project-name').textContent = name;
+  document.getElementById('board-project-name-bc').textContent = name;
+  document.getElementById('board-title').textContent = name + ' Board';
+  document.getElementById('backlog-project-name').textContent = name;
+  document.getElementById('sprints-project-name').textContent = name;
+}
+
+// ── Projects ──────────────────────────────────────────────────────────────
+async function loadProjects() {
+  var el = document.getElementById('projects-grid');
+  el.innerHTML = '<div class="loading-state">Loading projects</div>';
+  var list = await api('GET', '/api/projects');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📁</div><h3>No projects yet</h3><p>Create your first project to get started.</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => `
+    <div class="project-card" onclick="openProject('${p.id}','${esc(p.name)}','${p.key}')">
+      <div class="project-card-header">
+        <div class="project-icon">${p.key[0]}</div>
+        <div>
+          <div class="project-key-badge">${p.key}</div>
+          <h3>${esc(p.name)}</h3>
+          <p>${esc(p.description || 'No description provided')}</p>
+        </div>
+      </div>
+      <div class="project-stats">
+        <div class="stat"><strong>${p._count?.issues ?? 0}</strong>Issues</div>
+        <div class="stat"><strong>${p._count?.sprints ?? 0}</strong>Sprints</div>
+        <div class="stat"><strong>${p.members?.length ?? 0}</strong>Members</div>
+      </div>
+    </div>`).join('');
+}
+
+async function openProject(id, name, key) {
+  setProjectContext(id, name, key);
+  currentSprints = await api('GET', `/api/projects/${id}/sprints`);
+  showPage('board');
+}
+
+async function createProject() {
+  hideError('cp-error');
+  try {
+    await api('POST', '/api/projects', {
+      key: document.getElementById('cp-key').value.toUpperCase(),
+      name: document.getElementById('cp-name').value,
+      description: document.getElementById('cp-desc').value || undefined,
+    });
+    closeModal('create-project-modal');
+    ['cp-key','cp-name','cp-desc'].forEach(id => document.getElementById(id).value = '');
+    loadProjects();
+  } catch(e) { showError('cp-error', e.message); }
+}
+
+// ── Board ─────────────────────────────────────────────────────────────────
+async function loadBoard() {
+  if (!currentProject) return;
+  var el = document.getElementById('board-columns');
+  el.innerHTML = '<div class="loading-state">Loading board</div>';
+  var active = currentSprints.find(s => s.status === 'ACTIVE');
+  var label = document.getElementById('board-sprint-label');
+  label.innerHTML = active
+    ? `<span class="sprint-pill">${esc(active.name)}</span>`
+    : `<span class="no-sprint-pill">No active sprint</span>`;
+  var q = active ? `?sprintId=${active.id}` : '';
+  var board = await api('GET', `/api/projects/${currentProject.id}/board${q}`);
+  el.innerHTML = board.columns.map(col => `
+    <div class="board-column">
+      <div class="column-header">
+        <div class="column-title-row">
+          <div class="column-dot" style="background:${col.color}"></div>
+          <span class="column-name">${esc(col.name)}</span>
+        </div>
+        <span class="column-count">${col.issues.length}</span>
+      </div>
+      <div class="column-issues">
+        ${col.issues.map(renderIssueCard).join('') || `<div style="text-align:center;padding:20px 0;color:var(--text-light);font-size:12px">No issues</div>`}
+      </div>
+    </div>`).join('');
+}
+
+function renderIssueCard(issue) {
+  var color = avatarColor(issue.assignee?.displayName || '');
+  var initial = (issue.assignee?.displayName || 'U')[0].toUpperCase();
+  return `
+    <div class="issue-card" onclick="openIssue('${issue.id}')">
+      <div class="issue-card-key">${esc(issue.issueKey)}</div>
+      <div class="issue-card-title">${esc(issue.title)}</div>
+      <div class="issue-card-footer">
+        <div class="issue-card-left">
+          ${typeBadge(issue.type)}
+          ${priorityIcon(issue.priority)}
+          ${issue.storyPoints ? `<span class="points-badge">${issue.storyPoints}</span>` : ''}
+        </div>
+        <div class="issue-card-right">
+          <div class="assignee-avatar" style="background:${color}" title="${esc(issue.assignee?.displayName||'Unassigned')}">${initial}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Backlog ───────────────────────────────────────────────────────────────
+async function loadBacklog() {
+  if (!currentProject) return;
+  var el = document.getElementById('backlog-content');
+  el.innerHTML = '<div class="loading-state">Loading</div>';
+  var board = await api('GET', `/api/projects/${currentProject.id}/board`);
+  var allIssues = board.columns.flatMap(c => c.issues);
+  if (!allIssues.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>Backlog is empty</h3><p>Create issues to populate the backlog.</p></div>`;
+    return;
+  }
+  var grouped = {};
+  allIssues.forEach(i => { (grouped[i.status] = grouped[i.status]||[]).push(i); });
+  el.innerHTML = Object.entries(grouped).map(([status, issues]) => `
+    <div class="backlog-group">
+      <div class="backlog-group-header">
+        ${statusLozenge(status)}
+        <span class="backlog-group-title" style="margin-left:8px">${esc(status)}</span>
+        <span class="backlog-group-count">${issues.length} issue${issues.length!==1?'s':''}</span>
+      </div>
+      ${issues.map(i => `
+        <div class="backlog-issue" onclick="openIssue('${i.id}')">
+          ${typeBadge(i.type)}
+          <span class="backlog-key">${esc(i.issueKey)}</span>
+          <span class="backlog-title">${esc(i.title)}</span>
+          ${priorityIcon(i.priority)}
+          ${i.storyPoints ? `<span class="points-badge">${i.storyPoints}pt</span>` : ''}
+          <div class="assignee-avatar" style="background:${avatarColor(i.assignee?.displayName||'')};width:22px;height:22px;font-size:9px">${(i.assignee?.displayName||'U')[0].toUpperCase()}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ── Sprints ───────────────────────────────────────────────────────────────
+async function loadSprints() {
+  if (!currentProject) return;
+  var el = document.getElementById('sprints-content');
+  el.innerHTML = '<div class="loading-state">Loading</div>';
+  currentSprints = await api('GET', `/api/projects/${currentProject.id}/sprints`);
+  if (!currentSprints.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">🏃</div><h3>No sprints yet</h3><p>Create a sprint to start planning.</p></div>`;
+    return;
+  }
+  el.innerHTML = currentSprints.map(s => `
+    <div class="sprint-card">
+      <div class="sprint-card-header">
+        <h3>${esc(s.name)}</h3>
+        <span class="sprint-status-pill ss-${s.status.toLowerCase()}">${s.status}</span>
+      </div>
+      <div class="sprint-card-body">
+        ${s.goal ? `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${esc(s.goal)}</p>` : ''}
+        <div class="sprint-meta">
+          ${s.startDate ? `<div class="sprint-meta-item">📅 <strong>${fmt(s.startDate)}</strong> → <strong>${fmt(s.endDate)}</strong></div>` : '<div class="sprint-meta-item" style="color:var(--text-light)">No dates set</div>'}
+          <div class="sprint-meta-item">Issues: <strong>${s._count?.issues ?? 0}</strong></div>
+        </div>
+        <div class="sprint-actions">
+          ${s.status === 'PLANNED' ? `<button class="btn btn-primary" onclick="startSprint('${s.id}')">▶ Start Sprint</button>` : ''}
+          ${s.status === 'ACTIVE'  ? `<button class="btn btn-danger"  onclick="completeSprint('${s.id}')">✓ Complete Sprint</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function startSprint(id) {
+  try {
+    await api('POST', `/api/sprints/${id}/start`);
+    currentSprints = await api('GET', `/api/projects/${currentProject.id}/sprints`);
+    loadSprints();
+  } catch(e) { alert(e.message); }
+}
+
+async function completeSprint(id) {
+  if (!confirm('Complete this sprint? Incomplete issues will move to the backlog.')) return;
+  try {
+    var r = await api('POST', `/api/sprints/${id}/complete`, {});
+    alert(`Sprint completed!\n\nVelocity: ${r.velocity} story points\nCompleted: ${r.completedIssues.length} issues\nMoved to backlog: ${r.incompleteIssues.length} issues`);
+    currentSprints = await api('GET', `/api/projects/${currentProject.id}/sprints`);
+    loadSprints();
+  } catch(e) { alert(e.message); }
+}
+
+async function createSprint() {
+  hideError('cs-error');
+  try {
+    await api('POST', `/api/projects/${currentProject.id}/sprints`, {
+      name: document.getElementById('cs-name').value,
+      goal: document.getElementById('cs-goal').value || undefined,
+      startDate: document.getElementById('cs-start').value ? new Date(document.getElementById('cs-start').value).toISOString() : undefined,
+      endDate:   document.getElementById('cs-end').value   ? new Date(document.getElementById('cs-end').value).toISOString()   : undefined,
+    });
+    closeModal('create-sprint-modal');
+    ['cs-name','cs-goal','cs-start','cs-end'].forEach(id => document.getElementById(id).value = '');
+    currentSprints = await api('GET', `/api/projects/${currentProject.id}/sprints`);
+    loadSprints();
+  } catch(e) { showError('cs-error', e.message); }
+}
+
+// ── Issue Detail ──────────────────────────────────────────────────────────
+async function openIssue(issueId) {
+  currentIssue = await api('GET', `/api/issues/${issueId}`);
+  var i = currentIssue;
+  document.getElementById('modal-type-badge').innerHTML = typeBadge(i.type);
+  document.getElementById('modal-issue-key').textContent = i.issueKey;
+  document.getElementById('modal-title').textContent = i.title;
+  document.getElementById('modal-desc').textContent = i.description || 'No description provided.';
+  document.getElementById('aside-status').innerHTML   = statusLozenge(i.status);
+  document.getElementById('aside-priority').innerHTML = priorityIcon(i.priority) + ' ' + i.priority;
+  var color = avatarColor(i.assignee?.displayName || '');
+  document.getElementById('aside-assignee').innerHTML = i.assignee
+    ? `<div style="display:flex;align-items:center;gap:6px"><div class="assignee-avatar" style="background:${color}">${i.assignee.displayName[0]}</div>${esc(i.assignee.displayName)}</div>`
+    : '<span style="color:var(--text-muted)">Unassigned</span>';
+  document.getElementById('aside-reporter').textContent  = i.reporter?.displayName || '—';
+  document.getElementById('aside-points').textContent    = i.storyPoints ?? '—';
+  document.getElementById('aside-sprint').textContent    = i.sprint?.name || 'Backlog';
+  document.getElementById('aside-created').textContent   = fmt(i.createdAt);
+
+  // Workflow transitions
+  var wf = await api('GET', `/api/projects/${currentProject.id}/workflow`);
+  var trans = wf.transitions.filter(t => t.fromStatus === i.status);
+  document.getElementById('modal-transitions').innerHTML = trans.length
+    ? trans.map(t => `<button class="trans-btn" onclick="doTransition('${esc(t.toStatus)}')">${esc(t.name || t.toStatus)}</button>`).join('')
+    : '<span style="font-size:13px;color:var(--text-muted)">No transitions available</span>';
+
+  // Comments
+  var comments = await api('GET', `/api/issues/${issueId}/comments`);
+  document.getElementById('modal-comments').innerHTML = comments.data.map(c => `
+    <div class="comment-item">
+      <div class="assignee-avatar" style="background:${avatarColor(c.author.displayName)};flex-shrink:0">${c.author.displayName[0]}</div>
+      <div class="comment-body">
+        <div class="comment-meta"><strong>${esc(c.author.displayName)}</strong> &nbsp;${fmt(c.createdAt)}</div>
+        <div class="comment-content">${esc(c.content)}</div>
+      </div>
+    </div>`).join('') || '<p style="font-size:13px;color:var(--text-muted)">No comments yet.</p>';
+
+  document.getElementById('comment-input').value = '';
+  openModal('issue-modal');
+}
+
+async function doTransition(toStatus) {
+  try {
+    await api('POST', `/api/issues/${currentIssue.id}/transitions`, { toStatus });
+    closeModal('issue-modal');
+    if (activePage === 'board')   loadBoard();
+    if (activePage === 'backlog') loadBacklog();
+  } catch(e) { alert('Cannot transition: ' + e.message); }
+}
+
+async function postComment() {
+  var content = document.getElementById('comment-input').value.trim();
+  if (!content) return;
+  try {
+    await api('POST', `/api/issues/${currentIssue.id}/comments`, { content });
+    openIssue(currentIssue.id);
+  } catch(e) { alert(e.message); }
+}
+
+// ── Create Issue ──────────────────────────────────────────────────────────
+function openCreateIssue() {
+  var sel = document.getElementById('ci-sprint');
+  sel.innerHTML = '<option value="">Backlog</option>' +
+    (currentSprints||[]).filter(s => s.status !== 'COMPLETED').map(s =>
+      `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  openModal('create-issue-modal');
+}
+
+async function createIssue() {
+  hideError('ci-error');
+  try {
+    await api('POST', `/api/projects/${currentProject.id}/issues`, {
+      type:        document.getElementById('ci-type').value,
+      priority:    document.getElementById('ci-priority').value,
+      title:       document.getElementById('ci-title').value,
+      description: document.getElementById('ci-desc').value || undefined,
+      storyPoints: parseInt(document.getElementById('ci-points').value) || undefined,
+      sprintId:    document.getElementById('ci-sprint').value || undefined,
+    });
+    closeModal('create-issue-modal');
+    ['ci-title','ci-desc','ci-points'].forEach(id => document.getElementById(id).value = '');
+    if (activePage === 'board')   loadBoard();
+    if (activePage === 'backlog') loadBacklog();
+  } catch(e) { showError('ci-error', e.message); }
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────
+async function pollNotifications() {
+  try {
+    var d = await api('GET', '/api/notifications/unread-count');
+    var b = document.getElementById('notif-badge');
+    if (d.count > 0) { b.textContent = d.count > 9 ? '9+' : d.count; b.style.display = 'flex'; }
+    else { b.style.display = 'none'; }
+  } catch {}
+  setTimeout(pollNotifications, 30000);
+}
+
+async function loadNotifications() {
+  var el = document.getElementById('notif-content');
+  el.innerHTML = '<div class="loading-state">Loading</div>';
+  var d = await api('GET', '/api/notifications');
+  if (!d.data.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">✅</div><h3>All caught up!</h3><p>No notifications right now.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">` +
+    d.data.map(n => `
+      <div class="notif-item ${n.isRead ? '' : 'unread'}">
+        <div class="notif-dot ${n.isRead ? 'read' : ''}"></div>
+        <div>
+          <div class="notif-title">${esc(n.title)}</div>
+          ${n.body ? `<div class="notif-body">${esc(n.body)}</div>` : ''}
+          <div class="notif-time">${fmt(n.createdAt)}</div>
+        </div>
+      </div>`).join('') + '</div>';
+}
+
+async function markAllRead() {
+  await api('PATCH', '/api/notifications/read', {});
+  loadNotifications();
+  document.getElementById('notif-badge').style.display = 'none';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(async function init() {
+  if (!token) return;
+  try {
+    currentUser = await api('GET', '/api/auth/me');
+    bootApp();
+  } catch { token = ''; localStorage.removeItem('token'); }
+})();
+
+// wire create-issue button to populate sprint dropdown
+document.querySelectorAll('[onclick="openModal(\'create-issue-modal\')"]').forEach(b => {
+  b.setAttribute('onclick', 'openCreateIssue()');
+});
+</script>
+</body>
+</html>
