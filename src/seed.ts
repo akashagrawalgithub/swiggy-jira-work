@@ -18,9 +18,9 @@ export async function runSeed(prisma: PrismaClient) {
     });
   }
 
-  const akash = await upsertUser('akash@gmail.com', 'Akash Agrawal',  'password123');
-  const akash1   = await upsertUser('akash1@gmail.com', 'Akash Agrawal',  'password123');
-  const akash2 = await upsertUser('akash2@gmail.com', 'Akash Agrawal',  'password123');
+  const akash = await upsertUser('akash242018@gmail.com', 'Akash Agrawal',  '123456789');
+  const akash1   = await upsertUser('akash1@gmail.com',    'Akash Agrawal',  '123456789');
+  const akash2 = await upsertUser('akash2@gmail.com',    'Akash Agrawal',  '123456789');
 
   // ── Project ──────────────────────────────────────────────────────────
   const existing = await prisma.project.findUnique({ where: { key: 'DEMO' } });
